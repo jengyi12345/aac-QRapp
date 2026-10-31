@@ -1,5 +1,5 @@
 /* 離線快取。更新 index.html 或 audio/ 之後，請把 VERSION 數字加 1。 */
-const VERSION = 'aac-v1';
+const VERSION = 'aac-v2';
 
 const SHELL = ['./', 'index.html'];
 
