@@ -177,6 +177,7 @@ body {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   transition: transform .06s ease, background-color .15s ease;
   user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;          /* 關掉雙擊放大，連續點按才不會被吃掉 */
 }
 .btn:active { transform: scale(.97); }
 .btn:focus-visible { outline: 3px solid var(--msg-line); outline-offset: 2px; }
@@ -239,7 +240,6 @@ body {
 .btn-memory { background: #2f6f9f; color: #fff; min-height: 76px; font-size: 1.35rem; border-radius: 18px; }
 .btn-memory.playing { background: #1e4b6d; }
 .btn-clear { background: var(--surface); color: var(--accent); border-color: var(--accent); min-height: 76px; font-size: 1.2rem; border-radius: 18px; }
-.btn-clear.armed { background: var(--accent); color: #fff; font-size: 1rem; }
 .btn:disabled { opacity: .4; cursor: default; transform: none; }
 
 /* ---------- 編輯模式 ---------- */
@@ -294,6 +294,17 @@ audio { width: 100%; margin-top: 8px; }
   font-size: 1rem; max-width: 90vw; text-align: center; transition: all .2s ease; z-index: 50;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.undo-bar {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 16px;
+  background: var(--ink); color: #fff; padding: 10px 10px 10px 20px; border-radius: 16px;
+  font-size: 1.1rem; font-weight: 700; z-index: 60; transition: all .2s ease; white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+}
+.undo-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+.btn-undo { background: var(--msg-line); color: var(--ink); min-height: 48px; padding: 8px 22px; }
 
 /* ---------- 列印 ---------- */
 #print-area { display: none; }
@@ -2730,6 +2741,10 @@ var qrcode = function() {
 <div id="print-area" aria-hidden="true"></div>
 
 <div id="toast" class="toast" role="status"></div>
+<div id="undo-bar" class="undo-bar" role="status">
+  <span>已清除記憶</span>
+  <button id="btn-undo" class="btn btn-undo" type="button">復原</button>
+</div>
 
 <script>
 /* AAC 溝通 — QR code 掃描播放音檔
@@ -3116,7 +3131,8 @@ const MEMORY_GAP_MS = 350;      // 每則訊息之間的停頓
 let memory = [];                // [name, name, ...]
 let memoryPlayToken = 0;        // 每次開始或停止播放就加 1，用來中斷舊的播放
 let memoryPlaying = false;
-let clearArmedTimer = null;
+let undoMemory = null;          // 清除前的記憶，用來復原
+let undoTimer = null;
 
 function loadMemory() {
   try { memory = JSON.parse(localStorage.getItem(LS_MEMORY) || '[]') || []; }
@@ -3127,6 +3143,7 @@ function saveMemory() {
 }
 
 function addToMemory(name) {
+  hideUndo();                   // 清除後又掃了新卡片，就不再提供復原
   memory.push(name);
   if (memory.length > MEMORY_MAX) memory = memory.slice(-MEMORY_MAX);
   saveMemory();
@@ -3196,29 +3213,32 @@ function finishMemoryPlayback() {
   renderMemory();
 }
 
-/** 清除要按兩次（3 秒內），避免不小心按到 */
+/** 按一下就清除；6 秒內可按「復原」救回，避免誤觸 */
 function clearMemory() {
-  const btn = $('btn-mem-clear');
-  if (!btn.classList.contains('armed')) {
-    btn.classList.add('armed');
-    btn.textContent = '再按一次確認清除';
-    clearTimeout(clearArmedTimer);
-    clearArmedTimer = setTimeout(disarmClear, 3000);
-    return;
-  }
-  disarmClear();
+  if (!memory.length) return;
   stopMemoryPlayback();
+  undoMemory = memory.slice();
   memory = [];
   saveMemory();
   renderMemory();
-  toast('已清除記憶');
+  $('undo-bar').classList.add('show');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideUndo, 6000);
 }
 
-function disarmClear() {
-  clearTimeout(clearArmedTimer);
-  const btn = $('btn-mem-clear');
-  btn.classList.remove('armed');
-  btn.textContent = '✕ 清除記憶';
+function undoClear() {
+  if (undoMemory) {
+    memory = undoMemory;
+    saveMemory();
+    renderMemory();
+  }
+  hideUndo();
+}
+
+function hideUndo() {
+  clearTimeout(undoTimer);
+  undoMemory = null;
+  $('undo-bar').classList.remove('show');
 }
 
 /* =================================================================
@@ -3622,6 +3642,7 @@ function bindEvents() {
   $('btn-replay').onclick = () => { unlockAudio(); stopMemoryPlayback(); if (lastPlayedName) playClip(lastPlayedName); };
   $('btn-mem-play').onclick = playMemory;
   $('btn-mem-clear').onclick = clearMemory;
+  $('btn-undo').onclick = undoClear;
 
   $('btn-rec').onclick = () => (rec ? stopRecording() : startRecording());
   $('in-file').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importAudioFile(f); };
