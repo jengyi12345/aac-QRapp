@@ -20,9 +20,26 @@
        每一行結尾要有逗號，最後一行不要逗號 -->
   <script type="application/json" id="vocab-data">
 {
-  "eat": {"text": "我想吃東西", "file": "eat.wav"},
-  "help": {"text": "我需要幫忙", "file": "help.wav"},
-  "sleep": {"text": "我想睡覺", "file": "sleep.wav"}
+  "我不要": {"text": "我不要", "file": "我不要.wav"},
+  "睡覺": {"text": "睡覺", "file": "睡覺.wav"},
+  "我想要": {"text": "我想要", "file": "我想要.wav"},
+  "吃飯": {"text": "吃飯", "file": "吃飯.wav"},
+  "出去玩": {"text": "出去玩", "file": "出去玩.wav"},
+  "上廁所": {"text": "上廁所", "file": "上廁所.wav"},
+  "喝飲料": {"text": "喝飲料", "file": "喝飲料.wav"},
+  "聽音樂": {"text": "聽音樂", "file": "聽音樂.wav"},
+  "看電視": {"text": "看電視", "file": "看電視.wav"},
+  "吃冰淇淋": {"text": "吃冰淇淋", "file": "吃冰淇淋.wav"},
+  "趕快去": {"text": "趕快去", "file": "趕快去.wav"},
+  "等一下": {"text": "等一下", "file": "等一下.wav"},
+  "再說一次": {"text": "再說一次", "file": "再說一次.wav"},
+  "照一張": {"text": "照一張", "file": "照一張.wav"},
+  "充電": {"text": "充電", "file": "充電.wav"},
+  "拿給我": {"text": "拿給我", "file": "拿給我.wav"},
+  "洗澡": {"text": "洗澡", "file": "洗澡.wav"},
+  "丟掉": {"text": "丟掉", "file": "丟掉.wav"},
+  "撿起來": {"text": "撿起來", "file": "撿起來.wav"},
+  "再見": {"text": "再見", "file": "再見.wav"}
 }
 </script>
   <!-- ============================================================= -->
@@ -2572,7 +2589,7 @@ var qrcode = function() {
       <span class="label">2. 英文音檔名稱（也是 QR code 內容）</span>
       <input id="in-name" type="text" placeholder="例如：help" autocomplete="off"
              autocapitalize="none" spellcheck="false" inputmode="latin">
-      <span class="hint">只能用小寫英文、數字、- 和 _，不用加副檔名</span>
+      <span class="hint">英文、中文、數字都可以，不要空白，不用加副檔名</span>
     </label>
 
     <div class="field">
@@ -2646,7 +2663,7 @@ var qrcode = function() {
 const LS_VOCAB = 'aac_vocab';          // { name: { text } }
 const DB_NAME = 'aac-db';
 const DB_STORE = 'audio';               // key: name, value: { blob, updated }
-const NAME_RE = /^[a-z0-9_-]+$/;
+const NAME_RE = /^[\p{L}\p{N}_-]+$/u;   // 英文、數字、中文皆可
 const MAX_REC_SEC = 30;
 const SAME_CODE_COOLDOWN_MS = 3000;
 
@@ -2794,8 +2811,8 @@ function getEntry(name) {
 }
 
 function allNames() {
-  const s = new Set([...Object.keys(defaults), ...Object.keys(userVocab), ...userAudioNames]);
-  return [...s].sort();
+  // 依預設卡片清單的順序，本機新增的卡片接在後面
+  return [...new Set([...Object.keys(defaults), ...Object.keys(userVocab), ...userAudioNames])];
 }
 
 /* =================================================================
@@ -2969,6 +2986,20 @@ async function stopScan() {
   resetScanUI();
 }
 
+/** 依 QR 內容找卡片：先比對名稱，再比對文字訊息（舊卡片的 QR 內容可能是中文訊息） */
+function findCardName(raw) {
+  const clean = (s) => (s || '').replace(/[\s\u3000]+/g, '').toLowerCase();
+  if (getEntry(raw)) return raw;
+  const n = normalizeName(raw);
+  if (n && getEntry(n)) return n;
+  const target = clean(raw);
+  for (const name of allNames()) {
+    const e = getEntry(name);
+    if (clean(name) === target || clean(e.text) === target) return name;
+  }
+  return null;
+}
+
 function onScanSuccess(decodedText) {
   const now = Date.now();
   const raw = (decodedText || '').trim();
@@ -2976,9 +3007,8 @@ function onScanSuccess(decodedText) {
   lastCode = raw;
   lastCodeTime = now;
 
-  let name = raw;
-  let entry = getEntry(name);
-  if (!entry) { name = normalizeName(raw); entry = getEntry(name); }
+  const name = findCardName(raw);
+  const entry = name ? getEntry(name) : null;
 
   if (navigator.vibrate) navigator.vibrate(60);
 
@@ -3288,7 +3318,7 @@ async function saveEntry() {
 
   if (!text) { toast('請輸入文字訊息'); $('in-text').focus(); return; }
   if (!name) { toast('請輸入英文音檔名稱'); $('in-name').focus(); return; }
-  if (!NAME_RE.test(name)) { toast('名稱只能用小寫英文、數字、- 和 _'); $('in-name').focus(); return; }
+  if (!NAME_RE.test(name)) { toast('名稱只能用英文、中文、數字、- 和 _，不能有空白或符號'); $('in-name').focus(); return; }
 
   const existing = getEntry(name);
   const hasAudio = pendingAudio || (existing && (existing.hasUserAudio || existing.defaultFile));
