@@ -22,53 +22,9 @@ texts_example.csv   批次設定文字訊息的範例
 "help": {"text": "我需要幫忙", "file": "help.wav"},
 ```
 
-## 一、把現有的 20 多個音檔放進來
 
-1. 安裝 ffmpeg（Windows 可用 `winget install ffmpeg`；Mac 用 `brew install ffmpeg`）。
-   沒有 ffmpeg 也能用，但只能處理 16-bit 的 .wav，`.3gp` 會被略過。
-2. 照 `texts_example.csv` 的格式寫一個 `texts.csv`，列出每個音檔名稱和要顯示的文字（存成 UTF-8）。
-3. 在 `prepare_audio.py` 所在的資料夾開終端機執行：
 
-   ```
-   python prepare_audio.py "D:\我的音檔" --texts texts.csv
-   ```
-
-   腳本會：
-   - 把 .wav / .3gp / .m4a / .mp3 全部轉成 16-bit 單聲道 .wav，放進 `aac-app/audio/`
-   - 檔名轉小寫、空白換成底線（`Go Home.wav` → `go_home.wav`，QR 內容就是 `go_home`）
-   - 自動更新 `index.html` 裡的預設卡片清單，已經寫好的文字不會被覆蓋
-   - 最後列出還沒填文字或找不到音檔的項目
-
-   如果 `aac-app` 資料夾放在別處，加上 `--app "路徑\aac-app"`。
-
-4. 打開 `sw.js`，把第二行 `const VERSION = 'aac-v1';` 改成 `aac-v2`（之後每次更新都加 1）。
-
-> 原始音檔不會被修改，轉好的檔案另存在 `aac-app/audio/`。
-
-## 二、部署到 GitHub Pages（不需要會用 git）
-
-1. 到 <https://github.com> 註冊或登入。
-2. 右上角 **＋ → New repository**
-   - Repository name：例如 `aac-app`
-   - 選 **Public**（免費帳號的 GitHub Pages 需要公開儲存庫，見下方「隱私提醒」）
-   - 按 **Create repository**
-3. 在新儲存庫頁面點 **uploading an existing file**。
-4. 打開電腦上的 `aac-app` 資料夾，**選取裡面的 `index.html`、`sw.js` 和 `audio` 資料夾**（不是 `aac-app` 資料夾本身），拖進網頁。
-5. 下方按 **Commit changes**。
-6. 到儲存庫的 **Settings → Pages**：
-   - Source 選 **Deploy from a branch**
-   - Branch 選 **main**、資料夾選 **/ (root)**，按 **Save**
-7. 等 1–2 分鐘，重新整理 Settings → Pages，上方會出現網址：
-   `https://你的帳號.github.io/aac-app/`
-
-### 之後要更新
-
-在儲存庫頁面點 **Add file → Upload files**，拖入改過的檔案（同名會直接覆蓋）→ Commit。
-記得同時上傳改過 VERSION 的 `sw.js`，使用者的手機重新開啟兩次就會更新。
-
-## 三、在手機上使用
-
-1. 用手機瀏覽器開啟上面的網址（Android 用 Chrome；iPhone 用 Safari）。
+## 三、用手機瀏覽器開啟上面的網址（Android 用 Chrome；iPhone 用 Safari）。
 2. 加到主畫面：
    - **Android Chrome**：右上角 ⋮ →「加到主畫面」或「安裝應用程式」
    - **iPhone Safari**：下方分享按鈕 →「加入主畫面」
@@ -107,12 +63,7 @@ texts_example.csv   批次設定文字訊息的範例
   ```
   再把 `audio/`、`index.html`、`sw.js`（VERSION 加 1）上傳到 GitHub。
 
-## 隱私提醒
 
-免費 GitHub Pages 的儲存庫是**公開**的，`audio/` 裡的錄音任何人都能下載。
-
-- 適合上傳：治療師或家長代錄的通用詞彙
-- 不建議上傳：個案本人的聲音或可辨識個人身分的內容。這類錄音請在個案的裝置上用編輯模式錄製，只會存在該裝置，不會上傳
 
 ## 常見問題
 
